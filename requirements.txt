@@ -1,0 +1,6 @@
+dash
+pandas
+plotly.express 
+dash_mantine_components 
+dash_ag_grid
+gunicorn
