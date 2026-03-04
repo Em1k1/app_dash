@@ -7,7 +7,7 @@ import dash_ag_grid as dag
 df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder2007.csv')
 
 app = Dash()
-
+server = app.server
 app.layout = dmc.MantineProvider(
     dmc.Container([
         dmc.Title("My First App with Data, Graph, and Controls", c="blue", order=3),
@@ -36,5 +36,5 @@ def update_graph(col_chosen):
     return fig
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True,host="0.0.0.0",port=8050)
 
