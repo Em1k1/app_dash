@@ -1,40 +1,97 @@
-from dash import Dash, dcc, callback, Output, Input
+import dash
+from dash import dcc, html
+import plotly.graph_objects as go
 import pandas as pd
-import plotly.express as px
-import dash_mantine_components as dmc
-import dash_ag_grid as dag
 
-df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/gapminder2007.csv')
+# przykładowe dane (centroidy gmin)
+data = {
+    "gmina": [
+        "Lipno","Rydzyna","Święciechowa",
+        "Wijewo","Osieczna","Krzemieniewo"
+    ],
+    "lat": [51.93, 51.78, 51.87, 51.95, 51.90, 51.86],
+    "lon": [16.56, 16.66, 16.49, 16.20, 16.60, 16.70],
+    "density": [3000, 4200, 5100, 5600, 6100, 7000]
+}
 
-app = Dash()
+df = pd.DataFrame(data)
+
+# klasy takie jak w Twoim JS
+bins = [0,3540,5008,5454,5997,6376,999999]
+labels = [
+    "0 - 3540",
+    "3540 - 5008",
+    "5008 - 5454",
+    "5454 - 5997",
+    "5997 - 6376",
+    "6376 +"
+]
+
+sizes = [5,10,15,20,30,40]
+
+colors = [
+    '#feedde',
+    '#fdd0a2',
+    '#fdae6b',
+    '#fd8d3c',
+    '#e6550d',
+    '#a63603'
+]
+
+df["class"] = pd.cut(df["density"], bins=bins, labels=labels)
+
+# aplikacja dash
+app = dash.Dash(__name__)
 server = app.server
-app.layout = dmc.MantineProvider(
-    dmc.Container([
-        dmc.Title("My First App with Data, Graph, and Controls", c="blue", order=3),
-        dmc.RadioGroup(
-           dmc.Group([dmc.Radio(i, value=i) for i in  ['pop', 'lifeExp', 'gdpPercap']]),
-            id='my-dmc-radio-item',
-            value='lifeExp',
-            p="sm"
-        ),
-        dmc.SimpleGrid([
-            dag.AgGrid(
-                rowData=df.to_dict("records"),
-                columnDefs=[{"field": i} for i in df.columns],
+fig = go.Figure()
+
+# dodanie punktów według klas
+for label, size, color in zip(labels, sizes, colors):
+
+    subset = df[df["class"] == label]
+
+    fig.add_trace(
+        go.Scattermapbox(
+            lat=subset["lat"],
+            lon=subset["lon"],
+            mode="markers",
+            marker=dict(
+                size=size*2,
+                color=color,
+                opacity=0.9
             ),
-            dcc.Graph(figure={}, id='graph-placeholder')
-        ], cols={"base": 1, "md": 2})
-    ], fluid=True)
+            name=label,
+            text=subset["gmina"],
+            customdata=subset["density"],
+            hovertemplate=
+            "<b>Gmina:</b> %{text}<br>" +
+            "<b>Gęstość:</b> %{customdata}<extra></extra>"
+        )
+    )
+
+fig.update_layout(
+
+    mapbox=dict(
+        style="https://api.maptiler.com/maps/019b307b-5d41-73d7-97d8-364ae32624d5/style.json?key=yE4pMpWGGPpLz4Gx37Rq",
+        center=dict(lat=51.83850, lon=16.58703),
+        zoom=9
+    ),
+
+    margin=dict(l=0,r=0,t=0,b=0),
+    legend_title="Ilość budynków"
 )
 
-@callback(
-    Output('graph-placeholder', 'figure'),
-    Input('my-dmc-radio-item', 'value')
-)
-def update_graph(col_chosen):
-    fig = px.histogram(df, x='continent', y=col_chosen, histfunc='avg')
-    return fig
+app.layout = html.Div([
 
-if __name__ == '__main__':
+    html.H3("Mapa ilości budynków w gminach powiatu Leszczyńskiego"),
+
+    dcc.Graph(
+        figure=fig,
+        style={"height":"95vh"}
+    )
+
+])
+
+
+if __name__ == "__main__":
     app.run(debug=True,host="0.0.0.0",port=8050)
-
