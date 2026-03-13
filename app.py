@@ -1,9 +1,13 @@
+import os
 import dash
 from dash import dcc, html
 import plotly.graph_objects as go
 import pandas as pd
 
-# przykładowe dane (centroidy gmin)
+# -----------------------
+# Dane przykładowe
+# -----------------------
+
 data = {
     "gmina": [
         "Lipno","Rydzyna","Święciechowa",
@@ -16,8 +20,12 @@ data = {
 
 df = pd.DataFrame(data)
 
-# klasy takie jak w Twoim JS
+# -----------------------
+# Klasy
+# -----------------------
+
 bins = [0,3540,5008,5454,5997,6376,999999]
+
 labels = [
     "0 - 3540",
     "3540 - 5008",
@@ -40,15 +48,18 @@ colors = [
 
 df["class"] = pd.cut(df["density"], bins=bins, labels=labels)
 
-# aplikacja dash
-app = dash.Dash(__name__)
-server = app.server
+# -----------------------
+# Figura mapy
+# -----------------------
+
 fig = go.Figure()
 
-# dodanie punktów według klas
 for label, size, color in zip(labels, sizes, colors):
 
     subset = df[df["class"] == label]
+
+    if subset.empty:
+        continue
 
     fig.add_trace(
         go.Scattermapbox(
@@ -56,7 +67,7 @@ for label, size, color in zip(labels, sizes, colors):
             lon=subset["lon"],
             mode="markers",
             marker=dict(
-                size=size*2,
+                size=size * 2,
                 color=color,
                 opacity=0.9
             ),
@@ -64,7 +75,7 @@ for label, size, color in zip(labels, sizes, colors):
             text=subset["gmina"],
             customdata=subset["density"],
             hovertemplate=
-            "<b>Gmina:</b> %{text}<br>" +
+            "<b>Gmina:</b> %{text}<br>"
             "<b>Gęstość:</b> %{customdata}<extra></extra>"
         )
     )
@@ -72,14 +83,21 @@ for label, size, color in zip(labels, sizes, colors):
 fig.update_layout(
 
     mapbox=dict(
-        style="https://api.maptiler.com/maps/019b307b-5d41-73d7-97d8-364ae32624d5/style.json?key=yE4pMpWGGPpLz4Gx37Rq",
+        style="carto-positron",  # stabilny styl
         center=dict(lat=51.83850, lon=16.58703),
         zoom=9
     ),
 
-    margin=dict(l=0,r=0,t=0,b=0),
+    margin=dict(l=0, r=0, t=0, b=0),
     legend_title="Ilość budynków"
 )
+
+# -----------------------
+# Aplikacja Dash
+# -----------------------
+
+app = dash.Dash(__name__)
+server = app.server
 
 app.layout = html.Div([
 
@@ -87,11 +105,14 @@ app.layout = html.Div([
 
     dcc.Graph(
         figure=fig,
-        style={"height":"95vh"}
+        style={"height": "95vh"}
     )
 
 ])
 
+# -----------------------
+# Uruchomienie (Render)
+# -----------------------
 
 if __name__ == "__main__":
-    app.run(debug=True,host="0.0.0.0",port=8050)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8050)))
